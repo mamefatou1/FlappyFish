@@ -1,0 +1,103 @@
+import javafx.animation.AnimationTimer;
+import javafx.application.Application;
+import javafx.scene.Scene;
+import javafx.scene.canvas.Canvas;
+import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.input.KeyCode;
+import javafx.scene.layout.Pane;
+import javafx.scene.paint.Color;
+import javafx.stage.Stage;
+
+public class FlappyBirdWelcomePage extends Application {
+
+    private static final int WIDTH = 800;
+    private static final int HEIGHT = 600;
+    private static final int BIRD_SIZE = 30;
+    private static final int OBSTACLE_WIDTH = 50;
+    private static final int OBSTACLE_HEIGHT = 300;
+
+    private int birdY = HEIGHT / 2;
+    private int velocity = 0;
+    private boolean gameOver = false;
+
+    public static void main(String[] args) {
+        launch(args);
+    }
+
+    @Override
+    public void start(Stage primaryStage) {
+        Canvas canvas = new Canvas(WIDTH, HEIGHT);
+        GraphicsContext gc = canvas.getGraphicsContext2D();
+        Pane root = new Pane(canvas);
+
+        Scene scene = new Scene(root, WIDTH, HEIGHT);
+        primaryStage.setScene(scene);
+        primaryStage.setTitle("Flappy Fish");
+        primaryStage.setResizable(false);
+
+        drawWelcomeScreen(gc);
+
+        scene.setOnKeyPressed(event -> {
+            if (event.getCode() == KeyCode.SPACE && !gameOver) {
+                startGame(primaryStage, root, gc);
+            }
+        });
+
+        primaryStage.show();
+    }
+
+    private void startGame(Stage primaryStage, Pane root, GraphicsContext gc) {
+        root.getChildren().clear();
+
+        new AnimationTimer() {
+            @Override
+            public void handle(long now) {
+                update();
+                render(gc);
+            }
+        }.start();
+
+        primaryStage.getScene().setOnKeyPressed(event -> {
+            if (event.getCode() == KeyCode.SPACE && !gameOver) {
+                velocity = -10;
+            }
+        });
+    }
+
+    private void update() {
+        if (!gameOver) {
+            birdY += velocity;
+            velocity += 1; // Gravity
+
+            if (birdY > HEIGHT || birdY < 0) {
+                gameOver = true;
+            }
+        }
+    }
+
+    private void render(GraphicsContext gc) {
+        gc.setFill(Color.LIGHTBLUE);
+        gc.fillRect(0, 0, WIDTH, HEIGHT);
+
+        gc.setFill(Color.GREEN);
+        gc.fillRect(WIDTH / 2 - OBSTACLE_WIDTH / 2, 0, OBSTACLE_WIDTH, HEIGHT / 2 - OBSTACLE_HEIGHT / 2);
+        gc.fillRect(WIDTH / 2 - OBSTACLE_WIDTH / 2, HEIGHT / 2 + OBSTACLE_HEIGHT / 2, OBSTACLE_WIDTH, HEIGHT / 2 - OBSTACLE_HEIGHT / 2);
+
+        gc.setFill(Color.YELLOW);
+        gc.fillOval(WIDTH / 4, birdY, BIRD_SIZE, BIRD_SIZE);
+
+        if (gameOver) {
+            gc.setFill(Color.RED);
+            gc.fillText("Game Over!", WIDTH / 2 - 50, HEIGHT / 2);
+        }
+    }
+
+    private void drawWelcomeScreen(GraphicsContext gc) {
+        gc.setFill(Color.LIGHTBLUE);
+        gc.fillRect(0, 0, WIDTH, HEIGHT);
+
+        gc.setFill(Color.BLACK);
+        gc.fillText("Flappy Fish", WIDTH / 2 - 50, HEIGHT / 2 - 50);
+        gc.fillText("Press SPACE to start", WIDTH / 2 - 80, HEIGHT / 2 + 50);
+    }
+}
