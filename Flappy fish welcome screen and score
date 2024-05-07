@@ -1,0 +1,145 @@
+package com.example.myfirstapp;
+import javafx.animation.AnimationTimer;
+import javafx.application.Application;
+import javafx.scene.Scene;
+import javafx.scene.canvas.Canvas;
+import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.input.KeyCode;
+import javafx.scene.layout.Pane;
+import javafx.scene.paint.Color;
+import javafx.scene.text.Font;
+import javafx.scene.text.FontWeight;
+import javafx.scene.text.TextAlignment;
+import javafx.stage.Stage;
+
+public class SplashyFish extends Application {
+
+    private static final int WIDTH = 800;
+    private static final int HEIGHT = 600;
+    private static final int BIRD_SIZE = 30;
+    private static final int OBSTACLE_WIDTH = 50;
+    private static final int OBSTACLE_HEIGHT = 300;
+    private static final int OBSTACLE_SPEED = 3;
+
+    private int birdY = HEIGHT / 2;
+    private int velocity = 0;
+    private int score = 0;
+    private boolean gameOver = false;
+    private boolean gameStarted = false;
+
+    public static void main(String[] args) {
+        launch(args);
+    }
+
+    @Override
+    public void start(Stage primaryStage) {
+        // Welcome screen
+        Pane welcomePane = new Pane();
+        welcomePane.setPrefSize(WIDTH, HEIGHT);
+
+        Canvas welcomeCanvas = new Canvas(WIDTH, HEIGHT);
+        GraphicsContext welcomeGC = welcomeCanvas.getGraphicsContext2D();
+        ShowWelcomeScreen(welcomeGC);
+
+        welcomePane.getChildren().add(welcomeCanvas);
+
+        Scene welcomeScene = new Scene(welcomePane);
+
+        welcomeScene.setOnKeyPressed(event -> {
+            if (event.getCode() == KeyCode.SPACE) {
+                gameStarted = true;
+                primaryStage.setScene(createGameScene());
+            }
+        });
+
+        primaryStage.setScene(welcomeScene);
+        primaryStage.setTitle("Flappy Bird");
+        primaryStage.setResizable(false);
+        primaryStage.show();
+    }
+
+    private Scene createGameScene() {
+        // Game screen
+        Pane root = new Pane();
+        root.setPrefSize(WIDTH, HEIGHT);
+
+        Canvas canvas = new Canvas(WIDTH, HEIGHT);
+        GraphicsContext gc = canvas.getGraphicsContext2D();
+
+        root.getChildren().add(canvas);
+
+        Scene gameScene = new Scene(root);
+
+        gameScene.setOnKeyPressed(event -> {
+            if (event.getCode() == KeyCode.SPACE && !gameOver) {
+                velocity = -10;
+            }
+        });
+
+        AnimationTimer timer = new AnimationTimer() {
+            @Override
+            public void handle(long now) {
+                update();
+                render(gc);
+            }
+        };
+        timer.start();
+
+        return gameScene;
+    }
+
+    private void update() {
+        if (!gameStarted) {
+            return;
+        }
+
+        if (!gameOver) {
+            birdY += velocity;
+            velocity += 1; // Gravity
+
+            if (birdY > HEIGHT || birdY < 0) {
+                gameOver = true;
+            }
+        }
+    }
+
+    private void render(GraphicsContext gc) {
+        gc.setFill(Color.LIGHTBLUE);
+        gc.fillRect(0, 0, WIDTH, HEIGHT);
+
+        gc.setFill(Color.GREEN);
+        gc.fillRect(WIDTH / 2 - OBSTACLE_WIDTH / 2, 0, OBSTACLE_WIDTH, HEIGHT / 2 - OBSTACLE_HEIGHT / 2);
+        gc.fillRect(WIDTH / 2 - OBSTACLE_WIDTH / 2, HEIGHT / 2 + OBSTACLE_HEIGHT / 2, OBSTACLE_WIDTH, HEIGHT / 2 - OBSTACLE_HEIGHT / 2);
+
+        gc.setFill(Color.YELLOW);
+        gc.fillOval(WIDTH / 4, birdY, BIRD_SIZE, BIRD_SIZE);
+
+        if (!gameStarted) {
+            return;
+        }
+
+        if (gameOver) {
+            gc.setFill(Color.RED);
+            gc.setFont(Font.font("Arial", FontWeight.BOLD, 36));
+            gc.setTextAlign(TextAlignment.CENTER);
+            gc.fillText("Game Over! Score: " + score, WIDTH / 2, HEIGHT / 2);
+        } else {
+            score++;
+            gc.setFill(Color.BLACK);
+            gc.setFont(Font.font("Arial", FontWeight.BOLD, 24));
+            gc.fillText("Score: " + score, 10, 20);
+        }
+    }
+
+    private void ShowWelcomeScreen(GraphicsContext gc) {
+        gc.setFill(Color.LIGHTBLUE);
+        gc.fillRect(0, 0, WIDTH, HEIGHT);
+
+        gc.setFill(Color.BLACK);
+        gc.setFont(Font.font("Arial", FontWeight.BOLD, 36));
+        gc.setTextAlign(TextAlignment.CENTER);
+        gc.fillText("Welcome to Spalshy Fish!", WIDTH / 2, HEIGHT / 2 - 50);
+        gc.setFont(Font.font("Arial", FontWeight.NORMAL, 24));
+        gc.fillText("Press SPACE to start", WIDTH / 2, HEIGHT / 2 + 50);
+    }
+}
