@@ -1,0 +1,261 @@
+package com.example.myfirstapp;
+
+import javafx.animation.AnimationTimer;
+import javafx.application.Application;
+import javafx.scene.Scene;
+import javafx.scene.canvas.Canvas;
+import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.control.Button;
+import javafx.scene.image.Image;
+import javafx.scene.input.KeyCode;
+import javafx.scene.layout.Pane;
+import javafx.scene.paint.Color;
+import javafx.scene.text.Font;
+import javafx.scene.text.FontWeight;
+import javafx.scene.text.TextAlignment;
+import javafx.stage.Stage;
+
+import java.util.ArrayList;
+import java.util.List;
+
+public class SplashyFishTrial extends Application {
+
+    private static final double WIDTH = 800;
+    private static final double HEIGHT = 600;
+    private static final double PIPE_WIDTH = 100;
+    private static final double PIPE_GAP = 190;
+    private static final double PIPE_SPEED = 3;
+    private static final double FISH_SIZE = 50;
+
+    private boolean gameStarted = false;
+    private boolean gameOver = false;
+    private int score = 0;
+
+    private final List<Obstacle> obstacles = new ArrayList<>();// list to store the obstacles
+    private Fish fish;
+    private Button restartButton;
+
+    private Image bgImage;
+    private Image obstacleImage;
+    private Image fishImage;
+
+    public static void main(String[] args) {
+        launch(args);
+    }
+
+    @Override
+    public void start(Stage primaryStage) {
+        // Load images once to avoid lagging
+        bgImage = new Image("https://t3.ftcdn.net/jpg/02/51/23/30/360_F_251233025_xjQViysDvtNZFOuLOvMY9OKiP2iksb4f.jpg");
+        obstacleImage = new Image("https://cdn-icons-png.flaticon.com/512/9487/9487857.png");
+        fishImage = new Image("https://clipart-library.com/images/rcnG8A45i.png", 50, 50, false, false);
+
+        Pane gameRoot = new Pane();
+        gameRoot.setPrefSize(WIDTH, HEIGHT);
+
+        Canvas gameCanvas = new Canvas(WIDTH, HEIGHT);
+        GraphicsContext gc = gameCanvas.getGraphicsContext2D();
+
+        gameRoot.getChildren().add(gameCanvas);
+
+        restartButton = new Button("Restart");
+        restartButton.setLayoutX(WIDTH / 2 - 50);
+        restartButton.setLayoutY(HEIGHT / 2 + 30);
+        restartButton.setVisible(false);
+        restartButton.setOnAction(e -> restartGame());
+
+        gameRoot.getChildren().add(restartButton);
+
+        Scene gameScene = new Scene(gameRoot);
+
+        gameScene.setOnKeyPressed(event -> {
+            if (event.getCode() == KeyCode.SPACE) {
+                if (!gameStarted) {
+                    startGame();
+                } else if (!gameOver) {
+                    fish.jump();
+                }
+            }
+        });
+
+        AnimationTimer timer = new AnimationTimer() {
+            @Override
+            public void handle(long now) {
+                if (gameStarted) {
+                    update();
+                    render(gc);
+                } else {
+                    showWelcomeScreen(gc);
+                }
+            }
+        };
+        timer.start();
+
+        primaryStage.setScene(gameScene);
+        primaryStage.setTitle("Splashy Fish");
+        primaryStage.setResizable(false);
+        primaryStage.show();
+    }
+
+    private void startGame() {
+        gameStarted = true;
+        fish = new Fish(WIDTH / 4, HEIGHT / 2, FISH_SIZE, fishImage); //  fish image
+        obstacles.clear();
+        score = 0; // Reset score
+        gameOver = false; // Reset game over
+        restartButton.setVisible(false);
+    }
+
+    private void update() {
+        if (!gameOver) {
+            fish.update();
+
+            // Check if the fish goes off-screen
+            if (fish.getY() >= HEIGHT || fish.getY() + fish.getSize() <= 0) {
+                gameOver = true;
+            }
+
+            for (Obstacle obstacle : obstacles) {
+                obstacle.moveLeft();
+                // end the game if the fish hits the obstacle
+                if (obstacle.intersects(fish)) {
+                    gameOver = true;
+                    break;
+                }
+            }
+
+            // add more obstacles
+            if (obstacles.isEmpty() || obstacles.getLast().getX() < WIDTH - WIDTH / 3) {
+                obstacles.add(new Obstacle(obstacleImage)); // Pass obstacle image
+            }
+
+            // Remove obstacles after passing through them
+            obstacles.removeIf(obstacle -> obstacle.getX() < -PIPE_WIDTH);
+
+            if (!gameOver) {
+                score++;
+            } else {
+                restartButton.setVisible(true);
+            }
+        }
+    }
+
+    private void render(GraphicsContext gc) {
+        gc.clearRect(0, 0, WIDTH, HEIGHT); // Clear canvas
+
+        gc.drawImage(bgImage, 0, 0, WIDTH, HEIGHT);
+
+        for (Obstacle obstacle : obstacles) {
+            obstacle.render(gc);
+        }
+
+        fish.render(gc);
+
+        // Player's score
+        gc.setFill(Color.BLACK);
+        gc.setFont(Font.font("Arial", FontWeight.BOLD, 24));
+        gc.fillText("Score: " + score, 60, 20);
+
+        if (gameOver) {
+            gc.setFill(Color.RED);
+            gc.setFont(Font.font("Arial", FontWeight.BOLD, 36));
+            gc.setTextAlign(TextAlignment.CENTER);
+            gc.fillText("Game Over! Score: " + score, WIDTH / 2, HEIGHT / 2);
+        }
+    }
+
+    private void showWelcomeScreen(GraphicsContext gc) {
+        gc.clearRect(0, 0, WIDTH, HEIGHT); // Clear canvas
+
+        gc.drawImage(bgImage, 0, 0, WIDTH, HEIGHT);
+
+        gc.setFill(Color.BLACK);
+        gc.setFont(Font.font("Arial", FontWeight.BOLD, 36));
+        gc.setTextAlign(TextAlignment.CENTER);
+        gc.fillText("Welcome to Splashy Fish!", WIDTH / 2, HEIGHT / 2 - 50);
+        gc.setFont(Font.font("Arial", FontWeight.NORMAL, 24));
+        gc.fillText("Press SPACE to start", WIDTH / 2, HEIGHT / 2 + 50);
+    }
+
+    private void restartGame() {
+        startGame();
+    }
+
+    private static class Obstacle {
+        private double x;
+        private final double height;
+        private final Image obstacleImage;
+
+        public Obstacle(Image obstacleImage) {
+            this.x = WIDTH;
+            this.height = Math.random() * (HEIGHT - 2 * PIPE_GAP) + PIPE_GAP / 2;// generate random obstacle positions
+            this.obstacleImage = obstacleImage;
+        }
+
+        public double getX() {
+            return x;
+        }
+
+        public void moveLeft() {
+            x -= PIPE_SPEED;// get the obstacles to move
+        }
+
+        public boolean intersects(Fish fish) {
+            //check for collisions between the obstacles and the fish
+            return fish.getX() < x + PIPE_WIDTH &&
+                    fish.getX() + fish.getSize() > x &&
+                    (fish.getY() + fish.getSize() < height || fish.getY() > height + PIPE_GAP);
+        }
+
+        public void render(GraphicsContext gc) {
+            // Draw the top part of the obstacle
+            gc.drawImage(obstacleImage, x, 0, PIPE_WIDTH, height);
+            //  the bottom part
+            gc.drawImage(obstacleImage, x, height + PIPE_GAP, PIPE_WIDTH, HEIGHT - height - PIPE_GAP);
+        }
+    }
+
+    private static class Fish {
+        private final double x;
+        private double y;
+        private final double size;
+        private double velocity;
+
+        private static final double GRAVITY = 0.6; // Reduced gravity for slower falling
+        private static final double JUMP_STRENGTH = -8; // Reduced jump strength for a less powerful jump
+        private final Image fishImage;
+
+        public Fish(double x, double y, double size, Image fishImage){
+            this.x = x;
+            this.y = y;
+            this.size = size;
+            this.fishImage = fishImage;
+            this.velocity = 0;
+        }
+
+        public double getX() {
+            return x;
+        }
+
+        public double getY() {
+            return y;
+        }
+
+        public double getSize() {
+            return size;
+        }
+
+        public void jump() {
+            velocity = JUMP_STRENGTH;
+        }
+
+        public void update() {
+            velocity += GRAVITY;
+            y += velocity;
+        }
+
+        public void render(GraphicsContext gc) {
+            gc.drawImage(fishImage, x, y);
+        }
+    }
+}
