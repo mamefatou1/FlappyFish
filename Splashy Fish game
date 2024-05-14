@@ -1,0 +1,226 @@
+package com.example.myfirstapp;
+
+import javafx.animation.AnimationTimer;
+import javafx.application.Application;
+import javafx.scene.Scene;
+import javafx.scene.canvas.Canvas;
+import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.control.Button;
+import javafx.scene.input.KeyCode;
+import javafx.scene.layout.Pane;
+import javafx.scene.paint.Color;
+import javafx.scene.text.Font;
+import javafx.scene.text.FontWeight;
+import javafx.scene.text.TextAlignment;
+import javafx.stage.Stage;
+
+import java.util.ArrayList;
+import java.util.List;
+
+public class SplashyFish extends Application {
+
+    private static final double WIDTH = 800;
+    private static final double HEIGHT = 600;
+    private static final double PIPE_WIDTH = 80;
+    private static final double PIPE_GAP = 200;
+    private static final double PIPE_SPEED = 3;
+    private static final double FISH_SIZE = 40;
+
+    private boolean gameStarted = false;
+    private boolean gameOver = false;
+    private int score = 0;
+
+    private final List<Obstacle> obstacles = new ArrayList<>();
+    private Fish fish;
+
+    public static void main(String[] args) {
+        launch(args);
+    }
+
+    @Override
+    public void start(Stage primaryStage) {
+        Pane gameRoot = new Pane();
+        gameRoot.setPrefSize(WIDTH, HEIGHT);
+
+        Canvas gameCanvas = new Canvas(WIDTH, HEIGHT);
+        GraphicsContext gc = gameCanvas.getGraphicsContext2D();
+
+        gameRoot.getChildren().add(gameCanvas);
+
+        Scene gameScene = new Scene(gameRoot);
+
+        gameScene.setOnKeyPressed(event -> {
+            if (event.getCode() == KeyCode.SPACE) {
+                if (!gameStarted) {
+                    startGame();
+                } else if (!gameOver) {
+                    fish.jump();
+                }
+            }
+        });
+
+        AnimationTimer timer = new AnimationTimer() {
+            @Override
+            public void handle(long now) {
+                if (gameStarted) {
+                    update();
+                    render(gc);
+                } else {
+                    showWelcomeScreen(gc);
+                }
+            }
+        };
+        timer.start();
+
+        primaryStage.setScene(gameScene);
+        primaryStage.setTitle("Splashy Fish");
+        primaryStage.setResizable(false);
+        primaryStage.show();
+    }
+
+    private void startGame() {
+        gameStarted = true;
+        fish = new Fish(WIDTH / 4, HEIGHT / 2, FISH_SIZE); // Create a bird
+        obstacles.clear();
+        score = 0; // Reset score
+        gameOver = false; // Reset game over
+    }
+
+    private void update() {
+        if (!gameOver) {
+            fish.update();
+
+            // Check if bird goes off the screen
+            if (fish.getY() >= HEIGHT || fish.getY() + fish.getSize() <= 0) {
+                gameOver = true;
+            }
+
+            for (Obstacle obstacle : obstacles) {
+                obstacle.moveLeft();
+                // end the game if the fish hits the obstacle
+                if (obstacle.intersects(fish)) {
+                    gameOver = true;
+                    break;
+                }
+            }
+
+            // Add more obstacles
+            if (obstacles.isEmpty() || obstacles.getLast().getX() < WIDTH - WIDTH / 3) {
+                obstacles.add(new Obstacle());
+            }
+
+            // Remove obstacles after passing through them
+            obstacles.removeIf(obstacle -> obstacle.getX() < -PIPE_WIDTH);
+
+            score++;
+        }
+    }
+
+    private void render(GraphicsContext gc) {
+        gc.setFill(Color.LIGHTBLUE);
+        gc.fillRect(0, 0, WIDTH, HEIGHT);
+
+        gc.setFill(Color.GREEN);
+        for (Obstacle obstacle : obstacles) {
+            obstacle.render(gc);
+        }
+
+        fish.render(gc);
+
+        // Player's score in real time
+        gc.setFill(Color.BLACK);
+        gc.setFont(Font.font("Arial", FontWeight.BOLD, 24));
+        gc.fillText("Score: " + score, 60, 20);
+
+        if (gameOver) {
+            gc.setFill(Color.RED);
+            gc.setFont(Font.font("Arial", FontWeight.BOLD, 36));
+            gc.setTextAlign(TextAlignment.CENTER);
+            gc.fillText("Game Over! Score: " + score, WIDTH / 2, HEIGHT / 2);
+        }
+    }
+
+    private void showWelcomeScreen(GraphicsContext gc) {
+        gc.setFill(Color.LIGHTBLUE);
+        gc.fillRect(0, 0, WIDTH, HEIGHT);
+
+        gc.setFill(Color.BLACK);
+        gc.setFont(Font.font("Arial", FontWeight.BOLD, 36));
+        gc.setTextAlign(TextAlignment.CENTER);
+        gc.fillText("Welcome to Splashy Fish!", WIDTH / 2, HEIGHT / 2 - 50);
+        gc.setFont(Font.font("Arial", FontWeight.NORMAL, 24));
+        gc.fillText("Press SPACE to start", WIDTH / 2, HEIGHT / 2 + 50);
+    }
+
+    private static class Obstacle {
+        private double x;
+        private final double height;
+
+        public Obstacle() {
+            this.x = WIDTH;
+            this.height = Math.random() * (HEIGHT - 2 * PIPE_GAP) + PIPE_GAP / 2;// random obstacle positions
+        }
+
+        public double getX() {
+            return x;
+        }
+
+        public void moveLeft() {
+            x -= PIPE_SPEED;
+        }
+
+        public boolean intersects(Fish fish) {
+            return  fish.getX() < x + PIPE_WIDTH &&
+                    fish.getX() + fish.getSize() > x &&
+                    (fish.getY() < height || fish.getY() + fish.getSize() > height + PIPE_GAP);
+        }
+
+        public void render(GraphicsContext gc) {
+            gc.fillRect(x, 0, PIPE_WIDTH, height);
+            gc.fillRect(x, height + PIPE_GAP, PIPE_WIDTH, HEIGHT - height - PIPE_GAP);
+        }
+    }
+
+    private static class Fish {
+        private final double x;
+        private double y;
+        private final double size;
+        private double velocity;
+
+        private static final double GRAVITY = 0.5;
+        private static final double JUMP_STRENGTH = -10;
+
+        public Fish(double x, double y, double size) {
+            this.x = x;
+            this.y = y;
+            this.size = size;
+            this.velocity = 0;
+        }
+
+        public double getX() {
+            return x;
+        }
+
+        public double getY() {
+            return y;
+        }
+
+        public double getSize() {
+            return size;
+        }
+
+        public void jump() {
+            velocity = JUMP_STRENGTH;
+        }
+
+        public void update() {
+            velocity += GRAVITY;
+            y += velocity;
+        }
+
+        public void render(GraphicsContext gc) {
+            gc.setFill(Color.YELLOW);
+            gc.fillOval(x, y, size, size);
+        }
+    }
+}
